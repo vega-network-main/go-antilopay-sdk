@@ -27,8 +27,12 @@ func WithCustomHTTPClient(httpClient *http.Client) ClientOption {
 	}
 }
 
-func NewClient(secretID, privateKeyBase64 string, opts ...ClientOption) (*Client, error) {
+func NewClient(projectID, secretID, privateKeyBase64, callbackPublicKey string, opts ...ClientOption) (*Client, error) {
 	pkBytes, err := base64.StdEncoding.DecodeString(privateKeyBase64)
+	if err != nil {
+		return nil, err
+	}
+	cpkBytes, err := base64.StdEncoding.DecodeString(callbackPublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -37,18 +41,28 @@ func NewClient(secretID, privateKeyBase64 string, opts ...ClientOption) (*Client
 	if err != nil {
 		return nil, err
 	}
+	callbackPrivateKey, err := x509.ParsePKCS8PrivateKey(cpkBytes)
+	if err != nil {
+		return nil, err
+	}
 
 	rsaKey, ok := privateKey.(*rsa.PrivateKey)
 	if !ok {
 		return nil, errors.New("not an RSA private key")
 	}
+	rsaCKey, ok := callbackPrivateKey.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("not an RSA public key")
+	}
 
 	client := &Client{
-		secretID:   secretID,
-		privateKey: rsaKey,
-		httpClient: &http.Client{},
-		baseURLv1:  DefaultBaseURLv1,
-		baseURLv2:  DefaultBaseURLv2,
+		projectID:         projectID,
+		secretID:          secretID,
+		privateKey:        rsaKey,
+		callbackPublicKey: rsaCKey,
+		httpClient:        &http.Client{},
+		baseURLv1:         DefaultBaseURLv1,
+		baseURLv2:         DefaultBaseURLv2,
 	}
 
 	for _, opt := range opts {

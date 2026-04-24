@@ -11,9 +11,11 @@ const (
 )
 
 type Client struct {
-	secretID   string
-	privateKey *rsa.PrivateKey
-	httpClient *http.Client
+	projectID         string
+	secretID          string
+	privateKey        *rsa.PrivateKey
+	callbackPublicKey *rsa.PublicKey
+	httpClient        *http.Client
 
 	baseURLv1 string
 	baseURLv2 string

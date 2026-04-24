@@ -4,10 +4,8 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,22 +13,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func VerifySignature(body []byte, signature, publicKeyBase64 string) error {
-	pubBytes, err := base64.StdEncoding.DecodeString(publicKeyBase64)
-	if err != nil {
-		return fmt.Errorf("decode public key: %w", err)
-	}
-
-	pubKeyInterface, err := x509.ParsePKIXPublicKey(pubBytes)
-	if err != nil {
-		return fmt.Errorf("parse public key: %w", err)
-	}
-
-	pubKey, ok := pubKeyInterface.(*rsa.PublicKey)
-	if !ok {
-		return errors.New("not an RSA public key")
-	}
-
+func (c *Client) VerifySignature(body []byte, signature string) error {
 	sigBytes, err := base64.StdEncoding.DecodeString(signature)
 	if err != nil {
 		return fmt.Errorf("decode signature: %w", err)
@@ -40,36 +23,36 @@ func VerifySignature(body []byte, signature, publicKeyBase64 string) error {
 	hash.Write(body)
 	hashed := hash.Sum(nil)
 
-	return rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hashed, sigBytes)
+	return rsa.VerifyPKCS1v15(c.callbackPublicKey, crypto.SHA256, hashed, sigBytes)
 }
 
-func WebhookHandlerFiber(publicKey string, processor func(p *CallbackPayload) error) fiber.Handler {
-	return func(c fiber.Ctx) error {
-		signature := c.Get("X-Apay-Callback")
+func (c *Client) WebhookHandlerFiber(processor func(p *CallbackPayload) error) fiber.Handler {
+	return func(cF fiber.Ctx) error {
+		signature := cF.Get("X-Apay-Callback")
 		if signature == "" {
-			return c.SendStatus(fiber.StatusForbidden)
+			return cF.SendStatus(fiber.StatusForbidden)
 		}
 
-		body := c.Body()
-		if err := VerifySignature(body, signature, publicKey); err != nil {
-			return c.SendStatus(fiber.StatusUnauthorized)
+		body := cF.Body()
+		if err := c.VerifySignature(body, signature); err != nil {
+			return cF.SendStatus(fiber.StatusUnauthorized)
 		}
 
 		var payload CallbackPayload
 		if err := json.Unmarshal(body, &payload); err != nil {
-			return c.SendStatus(fiber.StatusBadRequest)
+			return cF.SendStatus(fiber.StatusBadRequest)
 		}
 
 		if err := processor(&payload); err != nil {
 			// Return ONLY if errored during processing
-			return c.SendStatus(fiber.StatusInternalServerError)
+			return cF.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		return c.SendStatus(fiber.StatusOK)
+		return cF.SendStatus(fiber.StatusOK)
 	}
 }
 
-func WebhookHandlerHTTP(publicKey string, processor func(p *CallbackPayload) error) http.HandlerFunc {
+func (c *Client) WebhookHandlerHTTP(publicKey string, processor func(p *CallbackPayload) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -89,7 +72,7 @@ func WebhookHandlerHTTP(publicKey string, processor func(p *CallbackPayload) err
 		}
 		defer r.Body.Close()
 
-		if err = VerifySignature(body, signature, publicKey); err != nil {
+		if err = c.VerifySignature(body, signature); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
