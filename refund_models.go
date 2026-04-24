@@ -1,4 +1,4 @@
-package main
+package antilopay
 
 type RefundCreateRequest struct {
 	ProjectIdentificator string  `json:"project_identificator"`

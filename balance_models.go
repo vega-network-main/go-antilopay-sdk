@@ -1,4 +1,4 @@
-package main
+package antilopay
 
 type BalanceRequest struct {
 	ProjectIdentificator string `json:"project_identificator,omitempty"`

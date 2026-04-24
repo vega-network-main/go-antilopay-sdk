@@ -1,4 +1,4 @@
-package main
+package antilopay
 
 type CallbackPayload struct {
 	Type        string  `json:"type"`

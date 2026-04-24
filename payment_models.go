@@ -1,4 +1,4 @@
-package main
+package antilopay
 
 type PaymentCreateRequest struct {
 	ProjectIdentificator string         `json:"project_identificator"`
