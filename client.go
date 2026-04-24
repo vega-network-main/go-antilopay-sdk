@@ -41,7 +41,7 @@ func NewClient(projectID, secretID, privateKeyBase64, callbackPublicKey string, 
 	if err != nil {
 		return nil, err
 	}
-	callbackPrivateKey, err := x509.ParsePKCS8PrivateKey(cpkBytes)
+	callbackPrivateKey, err := x509.ParsePKIXPublicKey(cpkBytes)
 	if err != nil {
 		return nil, err
 	}
