@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -125,6 +126,11 @@ func (c *Client) doRequest(method, fullURL string, payload interface{}, result i
 		return resp, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return resp, fmt.Errorf("http error: status %d, body: %s", resp.StatusCode, string(bodyBytes))
+	}
 
 	if result != nil {
 		bodyBytes, err := io.ReadAll(resp.Body)
