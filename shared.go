@@ -23,6 +23,18 @@ type Client struct {
 
 type ClientOption func(*Client)
 
+func WithBaseURLv1(url string) ClientOption {
+	return func(c *Client) {
+		c.baseURLv1 = url
+	}
+}
+
+func WithBaseURLv2(url string) ClientOption {
+	return func(c *Client) {
+		c.baseURLv2 = url
+	}
+}
+
 type Customer struct {
 	Email    string `json:"email,omitempty"`
 	Phone    string `json:"phone,omitempty"`
